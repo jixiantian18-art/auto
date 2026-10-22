@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>定时播放系统 · 5路音频 | 24小时制定时播放（循环）与关闭</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0a0f1e 0%, #0c1122 100%);
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, 'Roboto', monospace;
+            padding: 2rem 1.5rem;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .system-card {
+            max-width: 900px;
+            width: 100%;
+            background: rgba(18, 25, 45, 0.85);
+            backdrop-filter: blur(2px);
+            border-radius: 2.5rem;
+            border: 1px solid rgba(72, 187, 255, 0.25);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 255, 255, 0.1) inset;
+            padding: 1.8rem 2rem;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #E0F2FE, #3B82F6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+            margin-bottom: 0.25rem;
+        }
+
+        .sub {
+            font-size: 0.85rem;
+            color: #8ca3cf;
+            border-left: 3px solid #3b82f6;
+            padding-left: 0.75rem;
+            margin-bottom: 1.5rem;
+            font-weight: 400;
+        }
+
+        .slots-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .slot {
+            background: #0f1424;
+            border-radius: 1.5rem;
+            padding: 1.2rem 1.5rem;
+            border: 1px solid #2a345a;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .slot-header {
+            font-weight: 700;
+            color: #bbd1ff;
+            margin-bottom: 0.8rem;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            background: #080c18;
+            padding: 0.6rem 1rem;
+            border-radius: 1.2rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .custom-file-label {
+            background: #1e2a4a;
+            color: #cbd5ff;
+            padding: 0.4rem 1.2rem;
+            border-radius: 2rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: 0.2s;
+            border: 1px solid #3b4b7a;
+        }
+
+        .custom-file-label:hover {
+            background: #2c3e66;
+            border-color: #5f7fbf;
+        }
+
+        .file-name {
+            color: #9ab3e6;
+            font-size: 0.8rem;
+            background: #01010140;
+            padding: 0.3rem 1rem;
+            border-radius: 2rem;
+            font-family: monospace;
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .timer-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.6rem;
+            background: #070b18;
+            padding: 0.5rem 0.8rem;
+            border-radius: 1rem;
+        }
+
+        .timer-label {
+            color: #cddcff;
+            font-size: 0.85rem;
+            min-width: 80px;
+        }
+
+        .time-input {
+            background: #0b0f1c;
+            border: 1px solid #2c3e66;
+            color: white;
+            padding: 0.35rem 0.5rem;
+            border-radius: 1rem;
+            font-size: 0.85rem;
+            width: 110px;
+            text-align: center;
+            font-weight: bold;
+            font-family: monospace;
+            color-scheme: dark;
+        }
+
+        .time-input::-webkit-calendar-picker-indicator {
+            filter: invert(0.8);
+            cursor: pointer;
+        }
+
+        .btn {
+            background: linear-gradient(95deg, #1e2b4f, #0f172a);
+            border: none;
+            padding: 0.9rem 2rem;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 3rem;
+            color: #d6e6ff;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid #3b6eff;
+            box-shadow: 0 4px 12px #00000030;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: scale(0.98);
+            background: #2a3a60;
+            border-color: #7aaaff;
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-small {
+            padding: 0.35rem 1rem;
+            font-size: 0.8rem;
+            border-radius: 2rem;
+            background: #1e2a4a;
+            border: 1px solid #3b6eff;
+            color: #d6e6ff;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 500;
+        }
+
+        .btn-small:hover:not(:disabled) {
+            background: #2c3e66;
+        }
+
+        .btn-small:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-accent {
+            background: #1a3a5a;
+            border-color: #4a9eff;
+            color: #c0e0ff;
+        }
+
+        .btn-danger {
+            background: #3a1a1a;
+            border-color: #ff5a5a;
+            color: #ffb0b0;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #5a2a2a;
+        }
+
+        .timer-status {
+            font-family: monospace;
+            background: #0a0e1c;
+            padding: 0.25rem 0.8rem;
+            border-radius: 2rem;
+            color: #90e0ff;
+            font-size: 0.72rem;
+            min-width: 90px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .manual-row {
+            display: flex;
+            gap: 0.6rem;
+            margin-top: 0.4rem;
+            flex-wrap: wrap;
+        }
+
+        .global-section {
+            background: #0b1022;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            border: 1px solid #2a345a;
+            margin-top: 1rem;
+        }
+
+        .global-title {
+            font-weight: 700;
+            color: #ff9090;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .global-row {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.8rem;
+        }
+
+        .warning-note {
+            background: #241f1a;
+            border-left: 4px solid #f97316;
+            padding: 0.6rem 1rem;
+            border-radius: 1rem;
+            font-size: 0.7rem;
+            color: #ffcf9a;
+            margin: 1rem 0 0.5rem;
+        }
+
+        footer {
+            font-size: 0.65rem;
+            text-align: center;
+            color: #4f5a7a;
+            margin-top: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .system-card {
+                padding: 1.2rem 1rem;
+            }
+            .slot {
+                padding: 0.9rem 1rem;
+            }
+            .timer-row {
+                gap: 0.4rem;
+            }
+            .timer-label {
+                min-width: 64px;
+                font-size: 0.75rem;
+            }
+            .file-name {
+                max-width: 140px;
+            }
+            .time-input {
+                width: 95px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="system-card">
+    <h1>⏱️ 定时播放系统 <span style="font-size: 1rem;">(5路音频 · 24小时制 · 循环播放)</span></h1>
+    <div class="sub">Auto Timer Player - 5 Slots | 选择明确的 24 小时时间点进行播放（循环）与关闭</div>
+
+    <div class="slots-container" id="slotsContainer"></div>
+
+    <!-- 全局控制区 -->
+    <div class="global-section">
+        <div class="global-title">🔴 全局控制</div>
+        <div class="global-row">
+            <span style="color:#cddcff; font-size:0.9rem;">⏰ 全局定时关闭：</span>
+            <input type="time" id="globalCloseTime" step="1" class="time-input">
+            <button id="startGlobalClose" class="btn-small btn-accent">设定关闭</button>
+            <button id="cancelGlobalClose" class="btn-small" disabled>取消</button>
+            <span id="globalCloseStatus" class="timer-status">未设定</span>
+        </div>
+        <div class="global-row">
+            <button id="stopAllBtn" class="btn-small btn-danger">⏹ 立即停止所有播放与定时</button>
+        </div>
+        <div class="warning-note">
+            ⚠️ 注意：定时播放触发后音频将<b>循环播放</b>，直到定时关闭触发或手动停止。若所选时间已过，将自动顺延到明天同一时间。请确保浏览器已允许音频播放（首次点击页面任意位置即可激活）。
+        </div>
+    </div>
+
+    <footer>5路独立音频定时播放（循环）/ 定时关闭 | 全局停止与定时关闭系统 | 24小时制精确到秒</footer>
+</div>
+
+<script>
+    const SLOT_COUNT = 5;
+    const slotsContainer = document.getElementById('slotsContainer');
+    const slotStates = [];
+
+    // ---------- 工具函数 ----------
+    function formatTarget(target) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+        const diffDays = Math.round((targetDay - today) / 86400000);
+        const timeStr = target.toTimeString().slice(0, 8);
+        if (diffDays === 0) return `今天 ${timeStr}`;
+        if (diffDays === 1) return `明天 ${timeStr}`;
+        return `${target.getMonth() + 1}/${target.getDate()} ${timeStr}`;
+    }
+
+    function formatRemaining(ms) {
+        if (ms <= 0) return '00:00:00';
+        const totalSec = Math.floor(ms / 1000);
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function getDefaultTime(offsetMinutes) {
+        const d = new Date(Date.now() + offsetMinutes * 60000);
+        return d.toTimeString().slice(0, 8);
+    }
+
+    // 从 "HH:MM:SS" 解析出目标 Date（若时间已过则+1天）
+    function parseTargetTime(timeStr) {
+        if (!timeStr) return null;
+        const parts = timeStr.split(':').map(Number);
+        const [h, m, s = 0] = parts;
+        if (isNaN(h) || isNaN(m)) return null;
+        const now = new Date();
+        const target = new Date(now);
+        target.setHours(h, m, s, 0);
+        if (target.getTime() <= now.getTime()) {
+            target.setDate(target.getDate() + 1);
+        }
+        return target;
+    }
+
+    // ---------- 动态创建 5 个文件槽 ----------
+    const defaultPlayTimes = [];
+    const defaultCloseTimes = [];
+    for (let i = 1; i <= SLOT_COUNT; i++) {
+        defaultPlayTimes.push(getDefaultTime(i * 5));
+        defaultCloseTimes.push(getDefaultTime(i * 5 + 10));
+    }
+
+    for (let i = 1; i <= SLOT_COUNT; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'slot';
+        slot.dataset.index = i;
+        slot.innerHTML = `
+            <div class="slot-header">📁 文件 ${i}</div>
+            <div class="file-row">
+                <label class="custom-file-label" for="fileInput${i}">选择文件</label>
+                <input type="file" id="fileInput${i}" accept="audio/*" style="display:none;">
+                <span class="file-name" id="fileName${i}">未选择文件</span>
+            </div>
+            <div class="timer-row">
+                <span class="timer-label">⏰ 定时播放:</span>
+                <input type="time" id="playTime${i}" step="1" value="${defaultPlayTimes[i-1]}" class="time-input">
+                <button id="startPlay${i}" class="btn-small">设定</button>
+                <button id="cancelPlay${i}" class="btn-small" disabled>取消</button>
+                <span id="playStatus${i}" class="timer-status">未设定</span>
+            </div>
+            <div class="timer-row">
+                <span class="timer-label">🔴 定时关闭:</span>
+                <input type="time" id="closeTime${i}" step="1" value="${defaultCloseTimes[i-1]}" class="time-input">
+                <button id="startClose${i}" class="btn-small">设定</button>
+                <button id="cancelClose${i}" class="btn-small" disabled>取消</button>
+                <span id="closeStatus${i}" class="timer-status">未设定</span>
+            </div>
+            <div class="manual-row">
+                <button id="manualPlay${i}" class="btn-small btn-accent">▶ 手动播放（单次）</button>
+                <button id="manualStop${i}" class="btn-small btn-danger">⏹ 停止</button>
+            </div>
+        `;
+        slotsContainer.appendChild(slot);
+    }
+
+    // ---------- 停止音频 ----------
+    function stopAudio(state) {
+        if (state.audio) {
+            try {
+                state.audio.pause();
+                state.audio.currentTime = 0;
+                state.audio.loop = false;
+            } catch (e) {}
+            state.audio = null;
+        }
+        state.isPlaying = false;
+        state.looping = false;
+    }
+
+    // 播放指定槽的音频（loop 参数控制是否循环）
+    function playSlotAudio(state, statusEl, loop = false) {
+        if (!state.audioURL) {
+            alert('请先为该文件选择一个音频文件');
+            return false;
+        }
+        stopAudio(state);
+        const audio = new Audio(state.audioURL);
+        audio.volume = 1.0;
+        audio.loop = loop;  // 关键：设置循环
+        audio.addEventListener('ended', () => {
+            // 循环播放时不会触发 ended，此事件用于单次播放结束
+            if (!audio.loop) {
+                state.isPlaying = false;
+                if (statusEl && statusEl.dataset.mode === 'play') {
+                    statusEl.innerText = '✅ 播放结束';
+                    statusEl.style.color = '#90ff90';
+                }
+            }
+        });
+        audio.play().catch(e => console.warn('播放被阻止:', e));
+        state.audio = audio;
+        state.isPlaying = true;
+        state.looping = loop;
+        if (statusEl) {
+            if (loop) {
+                statusEl.dataset.mode = 'loop';
+                statusEl.innerText = '🔁 循环播放中';
+                statusEl.style.color = '#90ff90';
+            } else {
+                statusEl.dataset.mode = 'play';
+                statusEl.innerText = '✅ 播放中（单次）';
+                statusEl.style.color = '#90ff90';
+            }
+        }
+        return true;
+    }
+
+    // ---------- 为每个槽绑定事件 ----------
+    for (let i = 1; i <= SLOT_COUNT; i++) {
+        const state = {
+            audioURL: null,
+            audio: null,
+            playInterval: null,
+            playTarget: null,
+            closeInterval: null,
+            closeTarget: null,
+            isPlaying: false,
+            looping: false
+        };
+        slotStates.push(state);
+
+        const fileInput = document.getElementById(`fileInput${i}`);
+        const fileName = document.getElementById(`fileName${i}`);
+        const playTimeInput = document.getElementById(`playTime${i}`);
+        const startPlay = document.getElementById(`startPlay${i}`);
+        const cancelPlay = document.getElementById(`cancelPlay${i}`);
+        const playStatus = document.getElementById(`playStatus${i}`);
+        const closeTimeInput = document.getElementById(`closeTime${i}`);
+        const startClose = document.getElementById(`startClose${i}`);
+        const cancelClose = document.getElementById(`cancelClose${i}`);
+        const closeStatus = document.getElementById(`closeStatus${i}`);
+        const manualPlay = document.getElementById(`manualPlay${i}`);
+        const manualStop = document.getElementById(`manualStop${i}`);
+
+        // 选择文件
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if (state.audioURL) URL.revokeObjectURL(state.audioURL);
+                state.audioURL = URL.createObjectURL(file);
+                fileName.innerText = file.name;
+            } else {
+                fileName.innerText = '未选择文件';
+                if (state.audioURL) {
+                    URL.revokeObjectURL(state.audioURL);
+                    state.audioURL = null;
+                }
+            }
+        });
+
+        // 手动播放（单次，不循环）
+        manualPlay.addEventListener('click', () => {
+            // 如果正在循环播放，先停止
+            if (state.isPlaying && state.looping) stopAudio(state);
+            playSlotAudio(state, playStatus, false);
+        });
+
+        // 手动停止
+        manualStop.addEventListener('click', () => {
+            stopAudio(state);
+            playStatus.dataset.mode = 'manual';
+            playStatus.innerText = '已停止';
+            playStatus.style.color = '#ff9090';
+        });
+
+        // ---------- 定时播放（循环） ----------
+        function clearPlayTimer() {
+            if (state.playInterval) { clearInterval(state.playInterval); state.playInterval = null; }
+            state.playTarget = null;
+            startPlay.disabled = false;
+            cancelPlay.disabled = true;
+            // 如果当前是定时播放触发的循环，取消定时不停止播放？我们保持播放，但状态显示未设定
+            // 为了清晰，取消定时仅取消倒计时，如果已触发播放则保持
+            if (!state.isPlaying) {
+                playStatus.innerText = '未设定';
+                playStatus.style.color = '#90e0ff';
+                playStatus.dataset.mode = '';
+            }
+        }
+
+        startPlay.addEventListener('click', () => {
+            // 如果已经存在播放定时，先清除
+            if (state.playInterval) clearPlayTimer();
+            // 如果当前有音频在播放（无论是循环还是单次），为了新定时播放，先停止
+            if (state.isPlaying) stopAudio(state);
+            const target = parseTargetTime(playTimeInput.value);
+            if (!target) {
+                alert('请选择有效的播放时间');
+                return;
+            }
+            if (!state.audioURL) {
+                alert(`文件 ${i} 未选择音频，无法定时播放`);
+                return;
+            }
+            state.playTarget = target;
+            startPlay.disabled = true;
+            cancelPlay.disabled = false;
+            playStatus.dataset.mode = 'scheduled';
+            playStatus.innerText = '等待触发...';
+            playStatus.style.color = '#90e0ff';
+
+            function tick() {
+                if (!state.playTarget) return;
+                const now = new Date();
+                const remain = state.playTarget.getTime() - now.getTime();
+                if (remain <= 0) {
+                    // 定时播放触发，循环播放
+                    playSlotAudio(state, playStatus, true);
+                    if (state.playInterval) { clearInterval(state.playInterval); state.playInterval = null; }
+                    state.playTarget = null;
+                    startPlay.disabled = false;
+                    cancelPlay.disabled = true;
+                    // 状态已在 playSlotAudio 中设为循环
+                    return;
+                }
+                playStatus.innerText = `${formatTarget(state.playTarget)} · 剩 ${formatRemaining(remain)}`;
+                playStatus.style.color = '#90e0ff';
+            }
+            tick();
+            state.playInterval = setInterval(tick, 1000);
+        });
+
+        cancelPlay.addEventListener('click', () => {
+            clearPlayTimer();
+            // 如果定时播放尚未触发，取消后状态复位
+            if (!state.isPlaying) {
+                playStatus.innerText = '未设定';
+                playStatus.style.color = '#90e0ff';
+                playStatus.dataset.mode = '';
+            }
+        });
+
+        // ---------- 定时关闭 ----------
+        function clearCloseTimer() {
+            if (state.closeInterval) { clearInterval(state.closeInterval); state.closeInterval = null; }
+            state.closeTarget = null;
+            startClose.disabled = false;
+            cancelClose.disabled = true;
+            closeStatus.innerText = '未设定';
+            closeStatus.style.color = '#90e0ff';
+        }
+
+        startClose.addEventListener('click', () => {
+            if (state.closeInterval) clearCloseTimer();
+            const target = parseTargetTime(closeTimeInput.value);
+            if (!target) {
+                alert('请选择有效的关闭时间');
+                return;
+            }
+            state.closeTarget = target;
+            startClose.disabled = true;
+            cancelClose.disabled = false;
+
+            function tick() {
+                if (!state.closeTarget) return;
+                const now = new Date();
+                const remain = state.closeTarget.getTime() - now.getTime();
+                if (remain <= 0) {
+                    stopAudio(state);
+                    closeStatus.innerText = '⏹ 已关闭';
+                    closeStatus.style.color = '#ff9090';
+                    if (state.closeInterval) { clearInterval(state.closeInterval); state.closeInterval = null; }
+                    state.closeTarget = null;
+                    startClose.disabled = false;
+                    cancelClose.disabled = true;
+                    // 同时更新播放状态显示（如果之前是循环播放）
+                    if (playStatus.dataset.mode === 'loop') {
+                        playStatus.innerText = '已停止';
+                        playStatus.style.color = '#ff9090';
+                        playStatus.dataset.mode = '';
+                    }
+                    return;
+                }
+                closeStatus.innerText = `${formatTarget(state.closeTarget)} · 剩 ${formatRemaining(remain)}`;
+                closeStatus.style.color = '#90e0ff';
+            }
+            tick();
+            state.closeInterval = setInterval(tick, 1000);
+        });
+
+        cancelClose.addEventListener('click', () => {
+            clearCloseTimer();
+        });
+    }
+
+    // ---------- 全局控制 ----------
+    let globalCloseInterval = null;
+    let globalCloseTarget = null;
+    const globalCloseTimeInput = document.getElementById('globalCloseTime');
+    const globalCloseStatus = document.getElementById('globalCloseStatus');
+    const startGlobalCloseBtn = document.getElementById('startGlobalClose');
+    const cancelGlobalCloseBtn = document.getElementById('cancelGlobalClose');
+
+    globalCloseTimeInput.value = getDefaultTime(30);
+
+    function clearGlobalClose() {
+        if (globalCloseInterval) { clearInterval(globalCloseInterval); globalCloseInterval = null; }
+        globalCloseTarget = null;
+        globalCloseStatus.innerText = '未设定';
+        globalCloseStatus.style.color = '#90e0ff';
+        startGlobalCloseBtn.disabled = false;
+        cancelGlobalCloseBtn.disabled = true;
+    }
+
+    // 停止所有：停止所有播放 + 清除所有定时器
+    function stopAll() {
+        slotStates.forEach((state, idx) => {
+            const i = idx + 1;
+            stopAudio(state);
+            // 清除播放定时
+            if (state.playInterval) { clearInterval(state.playInterval); state.playInterval = null; }
+            state.playTarget = null;
+            const startPlay = document.getElementById(`startPlay${i}`);
+            const cancelPlay = document.getElementById(`cancelPlay${i}`);
+            const playStatus = document.getElementById(`playStatus${i}`);
+            if (startPlay) startPlay.disabled = false;
+            if (cancelPlay) cancelPlay.disabled = true;
+            if (playStatus) {
+                playStatus.innerText = '已停止';
+                playStatus.style.color = '#ff9090';
+                playStatus.dataset.mode = '';
+            }
+            // 清除关闭定时
+            if (state.closeInterval) { clearInterval(state.closeInterval); state.closeInterval = null; }
+            state.closeTarget = null;
+            const startClose = document.getElementById(`startClose${i}`);
+            const cancelClose = document.getElementById(`cancelClose${i}`);
+            const closeStatus = document.getElementById(`closeStatus${i}`);
+            if (startClose) startClose.disabled = false;
+            if (cancelClose) cancelClose.disabled = true;
+            if (closeStatus) {
+                closeStatus.innerText = '未设定';
+                closeStatus.style.color = '#90e0ff';
+            }
+        });
+    }
+
+    startGlobalCloseBtn.addEventListener('click', () => {
+        if (globalCloseInterval) clearGlobalClose();
+        const target = parseTargetTime(globalCloseTimeInput.value);
+        if (!target) {
+            alert('请选择有效的关闭时间');
+            return;
+        }
+        globalCloseTarget = target;
+        startGlobalCloseBtn.disabled = true;
+        cancelGlobalCloseBtn.disabled = false;
+
+        function tick() {
+            if (!globalCloseTarget) return;
+            const now = new Date();
+            const remain = globalCloseTarget.getTime() - now.getTime();
+            if (remain <= 0) {
+                stopAll();
+                globalCloseStatus.innerText = '🔴 已关闭全部';
+                globalCloseStatus.style.color = '#ff9090';
+                if (globalCloseInterval) { clearInterval(globalCloseInterval); globalCloseInterval = null; }
+                globalCloseTarget = null;
+                startGlobalCloseBtn.disabled = false;
+                cancelGlobalCloseBtn.disabled = true;
+                return;
+            }
+            globalCloseStatus.innerText = `${formatTarget(globalCloseTarget)} · 剩 ${formatRemaining(remain)}`;
+            globalCloseStatus.style.color = '#90e0ff';
+        }
+        tick();
+        globalCloseInterval = setInterval(tick, 1000);
+    });
+
+    cancelGlobalCloseBtn.addEventListener('click', clearGlobalClose);
+
+    document.getElementById('stopAllBtn').addEventListener('click', () => {
+        stopAll();
+        clearGlobalClose();
+        globalCloseStatus.innerText = '已停止全部';
+        globalCloseStatus.style.color = '#ff9090';
+    });
+
+    // 页面关闭时清理资源
+    window.addEventListener('beforeunload', () => {
+        slotStates.forEach(state => {
+            stopAudio(state);
+            if (state.audioURL) URL.revokeObjectURL(state.audioURL);
+            if (state.playInterval) clearInterval(state.playInterval);
+            if (state.closeInterval) clearInterval(state.closeInterval);
+        });
+        if (globalCloseInterval) clearInterval(globalCloseInterval);
+    });
+
+    document.body.addEventListener('click', () => {}, { once: true });
+</script>
+</body>
+</html>
